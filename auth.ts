@@ -1,13 +1,19 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import authConfig from "./auth.config";
 import { prisma } from "./lib/db";
+import NextAuth, { DefaultSession } from "next-auth";
 import { getUserById } from "./lib/user";
-import NextAuth, { type DefaultSession } from "next-auth"
+import { UserRoles } from "@prisma/client";
+
 declare module "next-auth" {
   interface Session {
     user: {
-      role: "ADMIN" | "USER";
-    }& DefaultSession["user"]}}
+      role: UserRoles;
+    } & DefaultSession["user"];
+  }
+}
+
+
 export const { auth, handlers, signIn, signOut } = NextAuth({
   callbacks: {
     async session({ token, session }) {
@@ -15,15 +21,15 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.id = token.sub;
       }
 
-      if(token.role && session.user){
-        session.user.role = token.role;
+      if (token.role && session.user) {
+        session.user.role = token.role as UserRoles;
+        console.log(token.role)
       }
-
-      console.log(session);
       return session;
     },
-    async jwt({ token }) {
-      console.log("jwt token: ", token);
+
+    async jwt({ token}) {
+
       if (!token.sub) {
         return token;
       }
@@ -31,7 +37,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       const existingUser = await getUserById(token.sub);
 
       if (!existingUser) return token;
-      token.role = existingUser.role ?? "USER";
+      token.role = existingUser.role;
       return token;
     },
   },
